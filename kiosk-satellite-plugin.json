@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "apiVersion": 1,
+  "id": "portworld-yc-sm08p",
+  "name": "Portworld Panel Hardware Control",
+  "version": "1.0.0",
+  "minAndroidSdk": 26,
+  "minAppVersion": "2026.10.41",
+  "headless": true,
+  "entryClass": "io.github.patrick11994.portworldhardware.PortworldPanelPlugin",
+  "description": "Controls the built-in hardware of Portworld wall panels such as the YC-SM08P: the RGB side light as a select of colours and effects, and the optional presence sensor as an occupancy sensor with gesture triggers. Both reach Home Assistant through Kiosk Satellite's ESPHome entities, with no MQTT or scripts on the panel. Tested on the RK3576 YC-SM08P; needs the firmware's su.",
+  "author": "patrick11994",
+  "license": "Apache-2.0",
+  "icon": "icon.png",
+  "capabilities": ["entities"],
+  "settings": [
+    {"key": "blinkCount", "type": "number", "title": "Blinks for flash once", "default": 5, "min": 1, "max": 20, "step": 1, "group": "LED", "description": "How often the flash once and flash and off effects blink before they settle."},
+    {"key": "triggerDetected", "type": "boolean", "title": "Person detected trigger", "default": true, "group": "Presence", "description": "Fire the Person detected gesture trigger when someone comes near. Pick what it runs under Gestures > Plugin trigger."},
+    {"key": "triggerCleared", "type": "boolean", "title": "Nobody detected trigger", "default": false, "group": "Presence", "description": "Fire the Nobody detected gesture trigger when the sensor clears."},
+    {"key": "clearDelaySeconds", "type": "number", "title": "Clear after", "default": 0, "min": 0, "max": 600, "step": 5, "group": "Presence", "description": "Seconds the sensor must read empty before presence turns off. 0 follows the sensor directly."},
+    {"key": "pollSeconds", "type": "number", "title": "Check every", "default": 1, "min": 0.5, "max": 10, "step": 0.5, "group": "Presence", "description": "Seconds between readings of the sensor."},
+    {"key": "presenceInverted", "type": "boolean", "title": "Sensor reads 0 when someone is there", "default": true, "group": "Hardware", "description": "True on the RK3576 YC-SM08P. Turn off if presence shows the opposite of reality."},
+    {"key": "presencePath", "type": "string", "title": "Presence sensor file", "default": "/sys/ex_ctl/human", "group": "Hardware", "description": "The vendor's presence node."},
+    {"key": "redPin", "type": "number", "title": "Red LED GPIO", "default": 71, "min": 0, "max": 1023, "step": 1, "input": "field", "group": "Hardware", "description": "Linux GPIO number of the red channel. Only change this for another revision of the panel."},
+    {"key": "greenPin", "type": "number", "title": "Green LED GPIO", "default": 70, "min": 0, "max": 1023, "step": 1, "input": "field", "group": "Hardware"},
+    {"key": "bluePin", "type": "number", "title": "Blue LED GPIO", "default": 87, "min": 0, "max": 1023, "step": 1, "input": "field", "group": "Hardware"}
+  ],
+  "commands": [
+    {"id": "ledOff", "title": "LED off"},
+    {"id": "doubleBlink", "title": "LED double blink"}
+  ],
+  "triggers": [
+    {"id": "presenceDetected", "title": "Person detected"},
+    {"id": "presenceCleared", "title": "Nobody detected"}
+  ]
+}
