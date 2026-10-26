@@ -1,7 +1,5 @@
 # Portworld Panel Hardware Control
 
-[![Install in Kiosk Satellite](https://kiosksatellite.com/img/badges/plugin-add.svg)](https://kiosksatellite.com/redirect/plugin/?repository=patrick11994/ks-portworld-panel-hardware-control)
-
 A [Kiosk Satellite](https://kiosksatellite.com) plugin that controls the hardware built into Portworld wall panels: the **RGB side light** and the optional **presence sensor**. Both appear as Kiosk Satellite entities, and through its ESPHome integration in Home Assistant. Nothing else has to run on the panel: no MQTT broker, Termux or scripts.
 
 | Entity | Type | What |
@@ -22,6 +20,24 @@ The YC-SM08P is also sold as Wiren Board "Wall panel 8 inches Portworld", ALLNET
 **Your panel probably works if** `/sys/ex_ctl/human` exists (for presence), and GPIO 71, 70 and 87 drive the light (for the LED). If your panel uses other pins, set them under **Hardware**.
 
 The presence sensor is an extra the vendor fits on order. Without it, the plugin shows no Presence entity, and the LED still works.
+
+## Installation
+
+### Community Plugins (Recommended)
+
+Portworld Panel Hardware Control is listed in [Community Plugins](https://kiosksatellite.com/plugins/). Use the button below to open it in your Kiosk Satellite and install it.
+
+[![Install in Kiosk Satellite](https://kiosksatellite.com/img/badges/plugin-add.svg)](https://kiosksatellite.com/redirect/plugin/?repository=patrick11994/ks-portworld-panel-hardware-control)
+
+Or search for `Portworld Panel Hardware Control` in **Settings > Plugin Manager > Browse plugins** in Kiosk Satellite.
+
+### Manual
+
+1. Open **Settings > Plugin Manager** in Kiosk Satellite and turn on **Enable Plugins**.
+2. Choose **Add plugin**, paste `https://github.com/patrick11994/ks-portworld-panel-hardware-control` and choose **Preview**.
+3. Review the plugin and choose **Trust and install**.
+
+The plugin starts on its own: the LED and Presence entities appear under **Readings** on its page. To see them in Home Assistant, turn on ESPHome and its native entities in Kiosk Satellite.
 
 ## The LED
 
