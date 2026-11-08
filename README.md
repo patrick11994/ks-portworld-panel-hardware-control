@@ -127,7 +127,7 @@ export JAVA_HOME=/path/to/jdk17 ANDROID_HOME=/path/to/android-sdk
 python3 tools/test.py && python3 tools/build.py --android-platform 34
 ```
 
-Install `dist/portworld-yc-sm08p-<version>.zip` with **Plugin Manager > Developer Tools > Install from ZIP**. Releases are built by the GitHub workflow from a published release tag.
+Install `dist/portworld-yc-sm08p-<version>.zip` with **Plugin Manager > Developer Tools > Install from ZIP**. Releases are built by the GitHub workflow from a pushed version tag (`git tag -a vX.Y.Z -m "notes" && git push origin vX.Y.Z`): it attaches the files to a draft release and then publishes it, because releases in this repository are immutable.
 
 ## Credits
 
