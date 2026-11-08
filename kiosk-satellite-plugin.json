@@ -3,7 +3,7 @@
   "apiVersion": 1,
   "id": "portworld-yc-sm08p",
   "name": "Portworld Panel Hardware Control",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "minAndroidSdk": 26,
   "minAppVersion": "2026.10.41",
   "headless": true,
@@ -15,6 +15,7 @@
   "capabilities": ["entities"],
   "settings": [
     {"key": "blinkCount", "type": "number", "title": "Blinks for flash once", "default": 5, "min": 1, "max": 20, "step": 1, "group": "LED", "description": "How often the flash once and flash and off effects blink before they settle."},
+    {"key": "timedSeconds", "type": "number", "title": "Timed effects run for", "default": 30, "min": 5, "max": 600, "step": 5, "group": "LED", "description": "Seconds the timed alarm, police and breathe actions run before the LED goes back to what it showed."},
     {"key": "triggerDetected", "type": "boolean", "title": "Person detected trigger", "default": true, "group": "Presence", "description": "Fire the Person detected gesture trigger when someone comes near. Pick what it runs under Gestures > Plugin trigger."},
     {"key": "triggerCleared", "type": "boolean", "title": "Nobody detected trigger", "default": false, "group": "Presence", "description": "Fire the Nobody detected gesture trigger when the sensor clears."},
     {"key": "clearDelaySeconds", "type": "number", "title": "Clear after", "default": 0, "min": 0, "max": 600, "step": 5, "group": "Presence", "description": "Seconds the sensor must read empty before presence turns off. 0 follows the sensor directly."},
@@ -27,7 +28,25 @@
   ],
   "commands": [
     {"id": "ledOff", "title": "LED off"},
-    {"id": "doubleBlink", "title": "LED double blink"}
+    {"id": "ledToggle", "title": "LED toggle"},
+    {"id": "ledNextColour", "title": "LED next colour"},
+    {"id": "ledRed", "title": "LED red"},
+    {"id": "ledGreen", "title": "LED green"},
+    {"id": "ledBlue", "title": "LED blue"},
+    {"id": "ledYellow", "title": "LED yellow"},
+    {"id": "ledCyan", "title": "LED cyan"},
+    {"id": "ledMagenta", "title": "LED magenta"},
+    {"id": "ledWhite", "title": "LED white"},
+    {"id": "ledNextEffect", "title": "LED next effect"},
+    {"id": "doubleBlink", "title": "LED double blink"},
+    {"id": "flashOnce", "title": "LED flash once"},
+    {"id": "flashAndOff", "title": "LED flash and off"},
+    {"id": "notifyOk", "title": "LED notify OK"},
+    {"id": "notifyAttention", "title": "LED notify attention"},
+    {"id": "notifyAlert", "title": "LED notify alert"},
+    {"id": "alarmTimed", "title": "LED alarm for a while"},
+    {"id": "policeTimed", "title": "LED police for a while"},
+    {"id": "breatheTimed", "title": "LED breathe for a while"}
   ],
   "triggers": [
     {"id": "presenceDetected", "title": "Person detected"},

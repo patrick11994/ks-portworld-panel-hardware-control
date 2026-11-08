@@ -13,6 +13,7 @@ import java.util.Random;
  * What the LED shows: a colour or an effect, chosen by its select option. Effects run on their own thread, one at a
  * time; choosing anything else interrupts the running one first. Effects that use "the colour" blink the last colour
  * chosen, white until one is. breathe and color fade dim the channels with software PWM, only while they run.
+ * Notifications, double blink and timed effects are temporary: afterwards the LED goes back to what it showed before.
  */
 final class LedEffects {
     /** Hears what the LED settled on and what went wrong. Called from the caller's or the effect's thread. */
@@ -35,9 +36,21 @@ final class LedEffects {
     private static final double PWM_MIN = 0.02, PWM_MAX = 0.98;
 
     private static final Map<String, Effect> LOOPS = new LinkedHashMap<>();
-    private static final List<String> ONE_SHOTS = Arrays.asList("flash once", "flash and off", "double blink");
+    private static final List<String> ONE_SHOTS =
+            Arrays.asList("flash once", "flash and off", "double blink", "notify ok", "notify attention", "notify alert");
+    private static final Map<String, Colour> NOTIFY = new LinkedHashMap<>();
+
+    /** Ends a timed effect when its time is up. */
+    private static final class TimeUp extends RuntimeException {
+        TimeUp() {
+            super(null, null, false, false);
+        }
+    }
 
     static {
+        NOTIFY.put("notify ok", Colour.GREEN);
+        NOTIFY.put("notify attention", Colour.YELLOW);
+        NOTIFY.put("notify alert", Colour.RED);
         // The Termux script's effects, with its timings.
         LOOPS.put("flash", show -> show.blink(show.colour, 500, 500));
         LOOPS.put("strobe", show -> show.blink(show.colour, 100, 100));
@@ -90,7 +103,7 @@ final class LedEffects {
         });
     }
 
-    /** All select options: off and the colours, then the effects. Fewer than KS's limit of 32. */
+    /** All select options: off and the colours, then the effects. At most KS's limit of 32. */
     static String[] options() {
         List<String> options = new ArrayList<>();
         for (Colour colour : Colour.values()) options.add(colour.option);
@@ -109,6 +122,8 @@ final class LedEffects {
     private Thread runner;  // guarded by this
     private Thread active;  // the runner allowed to report; guarded by state
     private String current = Colour.OFF.option;  // guarded by state
+    private String underlying = Colour.OFF.option;  // what a temporary effect goes back to; guarded by state
+    private String lastLit;  // the last colour or lasting effect shown, for toggle; guarded by state
     private Colour colour = Colour.WHITE;  // guarded by state
     private volatile int blinks = 5;
 
@@ -133,18 +148,61 @@ final class LedEffects {
 
     /** Shows a colour or starts an effect. Returns quickly; throws IllegalArgumentException for an unknown option. */
     synchronized void select(String option) {
+        start(option, 0);
+    }
+
+    /** Runs a lasting effect for a while, then goes back to what the LED showed before. */
+    synchronized void selectFor(String option, long millis) {
+        if (!LOOPS.containsKey(option) || millis <= 0) throw new IllegalArgumentException("Not a timed effect: " + option);
+        start(option, millis);
+    }
+
+    /** Turns the LED off, or back on with the last colour or effect it showed. */
+    synchronized void toggle() {
+        String on;
+        synchronized (state) {
+            on = Colour.OFF.option.equals(current) ? (lastLit != null ? lastLit : colour.option) : Colour.OFF.option;
+        }
+        start(on, 0);
+    }
+
+    /** Shows the colour after the last one chosen. */
+    synchronized void nextColour() {
+        int index;
+        synchronized (state) {
+            index = Arrays.asList(Colour.LIT).indexOf(colour);
+        }
+        start(Colour.LIT[(index + 1) % Colour.LIT.length].option, 0);
+    }
+
+    /** Starts the lasting effect after the one running, or the first one. */
+    synchronized void nextEffect() {
+        List<String> effects = new ArrayList<>(LOOPS.keySet());
+        String now;
+        synchronized (state) {
+            now = current;
+        }
+        start(effects.get((effects.indexOf(now) + 1) % effects.size()), 0);
+    }
+
+    private void start(String option, long millis) {
         Colour chosen = Colour.named(option);
         if (chosen == null && !LOOPS.containsKey(option) && !ONE_SHOTS.contains(option)) {
             throw new IllegalArgumentException("Unknown LED option: " + option);
         }
         stopRunner();
+        boolean temporary = millis > 0 || ONE_SHOTS.contains(option);
         String previous;
         Colour base;
         synchronized (state) {
-            previous = current;
+            previous = underlying;
             if (chosen != null && chosen != Colour.OFF) colour = chosen;
             base = colour;
             current = option;
+            if (!temporary) {
+                underlying = option;
+                if (chosen != Colour.OFF) lastLit = option;
+            }
         }
         if (chosen != null) {
             try {
@@ -156,9 +214,8 @@ final class LedEffects {
             return;
         }
         listener.shown(option);
-        String resume = ONE_SHOTS.contains(previous) ? base.option : previous;
-        Show show = new Show(base);
-        Thread thread = new Thread(() -> runEffect(option, resume, show), "portworld-led-" + option.replace(' ', '-'));
+        Show show = new Show(base, millis);
+        Thread thread = new Thread(() -> runEffect(option, previous, show), "portworld-led-" + option.replace(' ', '-'));
         synchronized (state) {
             active = thread;
         }
@@ -203,23 +260,31 @@ final class LedEffects {
     private void runEffect(String option, String resume, Show show) {
         try {
             Effect loop = LOOPS.get(option);
-            if (loop != null) {
-                while (true) loop.run(show);
-            }
             String settled;
-            if (option.equals("double blink")) {
+            if (loop != null) {
+                try {
+                    while (true) loop.run(show);
+                } catch (TimeUp up) {
+                    settled = resume;
+                }
+            } else if (option.equals("double blink")) {
                 for (int i = 0; i < 2; i++) show.blink(show.colour, 150, 150);
+                settled = resume;
+            } else if (NOTIFY.containsKey(option)) {
+                for (int i = 0; i < 3; i++) show.blink(NOTIFY.get(option), 200, 200);
                 settled = resume;
             } else {
                 for (int i = 0; i < blinks; i++) show.blink(show.colour, 300, 300);
                 settled = option.equals("flash once") ? show.colour.option : Colour.OFF.option;
             }
+            // Without a time limit from here: what comes back lasts.
+            Show lasting = new Show(show.colour, 0);
             Colour still = Colour.named(settled);
-            if (still != null) show.hold(still, 0);
+            if (still != null) lasting.hold(still, 0);
             if (!settle(settled)) return;
             Effect next = LOOPS.get(settled);
             if (next != null) {
-                while (true) next.run(show);
+                while (true) next.run(lasting);
             }
         } catch (InterruptedException e) {
             // Replaced by another choice, or stopped.
@@ -228,11 +293,13 @@ final class LedEffects {
         }
     }
 
-    /** A one-shot effect is done: report what the LED shows now, unless something else was chosen meanwhile. */
+    /** A temporary effect is done: report what the LED shows now, unless something else was chosen meanwhile. */
     private boolean settle(String option) {
         synchronized (state) {
             if (active != Thread.currentThread()) return false;
             current = option;
+            underlying = option;
+            if (!Colour.OFF.option.equals(option)) lastLit = option;
         }
         listener.shown(option);
         return true;
@@ -247,16 +314,28 @@ final class LedEffects {
     private final class Show {
         final Colour colour;
         final Random random = LedEffects.this.random;
+        private final long deadline;  // System.nanoTime() when a timed effect ends, or 0
         private Colour last;
 
-        Show(Colour colour) {
+        Show(Colour colour, long millis) {
             this.colour = colour;
+            deadline = millis > 0 ? timing.nanoTime() + millis * 1_000_000L : 0;
         }
 
         void hold(Colour shown, long millis) throws IOException, InterruptedException {
             if (Thread.interrupted()) throw new InterruptedException();
+            checkTime();
             led.show(shown.red, shown.green, shown.blue);
-            if (millis > 0) timing.sleep(millis);
+            if (millis <= 0) return;
+            if (deadline != 0 && timing.nanoTime() + millis * 1_000_000L > deadline) {
+                timing.waitUntil(deadline);
+                throw new TimeUp();
+            }
+            timing.sleep(millis);
+        }
+
+        private void checkTime() {
+            if (deadline != 0 && timing.nanoTime() >= deadline) throw new TimeUp();
         }
 
         void blink(Colour shown, long onMillis, long offMillis) throws IOException, InterruptedException {
@@ -278,6 +357,7 @@ final class LedEffects {
         void fade(long millis, Fade fade) throws IOException, InterruptedException {
             long start = timing.nanoTime(), length = millis * 1_000_000L;
             for (long period = start; period - start < length; period += PWM_PERIOD_NANOS) {
+                checkTime();
                 double[] level = fade.at((double) (period - start) / length);
                 boolean[] on = new boolean[3];
                 long[] offAt = new long[3];

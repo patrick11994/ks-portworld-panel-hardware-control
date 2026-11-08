@@ -84,6 +84,9 @@ public final class LedEffectsTest {
         colours();
         loops();
         oneShots();
+        notifications();
+        timed();
+        toggleAndNext();
         breathe();
         replacing();
         System.out.println("LedEffectsTest passed");
@@ -91,7 +94,7 @@ public final class LedEffectsTest {
 
     private static void options() {
         String[] options = LedEffects.options();
-        check(options.length, 27);
+        check(options.length, 30);
         check(options.length <= 32, true);  // KS's select limit
         check(new HashSet<>(Arrays.asList(options)).size(), options.length);
         check(options[0], "off");
@@ -173,6 +176,85 @@ public final class LedEffectsTest {
         check(real.current(), "alarm");
         check(resumed.all(), "alarm, double blink, alarm");
         real.stop();
+    }
+
+    /** Notifications blink their own colour three times and go back to what was showing. */
+    private static void notifications() throws InterruptedException {
+        FakeTiming timing = new FakeTiming(60_000);
+        FakeLed led = new FakeLed(timing);
+        Heard heard = new Heard();
+        LedEffects effects = new LedEffects(led, timing, heard, new Random(1));
+        effects.select("cyan");
+        effects.select("notify alert");
+        effects.awaitRunner(2000);
+        check(led.first(8), "cyan@0 red@0 off@200 red@400 off@600 red@800 off@1000 cyan@1200");
+        check(effects.current(), "cyan");
+        check(heard.all(), "cyan, notify alert, cyan");
+        effects.select("off");
+        effects.select("notify ok");
+        effects.awaitRunner(2000);
+        check(led.last().split("@")[0], "off");
+        check(effects.current(), "off");
+    }
+
+    /** A timed effect runs until its time is up, then goes back, even in the middle of a step. */
+    private static void timed() throws InterruptedException {
+        FakeTiming timing = new FakeTiming(60_000);
+        FakeLed led = new FakeLed(timing);
+        Heard heard = new Heard();
+        LedEffects effects = new LedEffects(led, timing, heard, new Random(1));
+        effects.select("blue");
+        effects.selectFor("alarm", 1100);
+        effects.awaitRunner(2000);
+        check(led.first(8), "blue@0 red@0 off@200 red@400 off@600 red@800 off@1000 blue@1100");
+        check(effects.current(), "blue");
+        check(heard.all(), "blue, alarm, blue");
+
+        // A notification during a timed effect goes back to what was there before the timed one.
+        timing.now = 0;
+        effects.selectFor("breathe", 60_000);
+        effects.select("notify ok");
+        effects.awaitRunner(2000);
+        check(effects.current(), "blue");
+        try {
+            effects.selectFor("flash once", 1000);
+            throw new AssertionError("timed one-shot accepted");
+        } catch (IllegalArgumentException expected) {
+            check(effects.current(), "blue");
+        }
+    }
+
+    private static void toggleAndNext() throws InterruptedException {
+        FakeTiming timing = new FakeTiming(0);
+        LedEffects effects = new LedEffects(new FakeLed(timing), timing, new Heard(), new Random(1));
+        effects.toggle();  // nothing shown yet: the colour, white
+        check(effects.current(), "white");
+        effects.select("magenta");
+        effects.toggle();
+        check(effects.current(), "off");
+        effects.toggle();
+        check(effects.current(), "magenta");
+        effects.select("pulse");
+        effects.toggle();
+        effects.toggle();
+        check(effects.current(), "pulse");  // effects come back too
+
+        effects.select("blue");
+        effects.nextColour();
+        check(effects.current(), "yellow");
+        effects.select("white");
+        effects.nextColour();
+        check(effects.current(), "red");
+
+        effects.select("off");
+        effects.nextEffect();
+        check(effects.current(), "flash");
+        effects.nextEffect();
+        check(effects.current(), "strobe");
+        effects.select("color fade");
+        effects.nextEffect();
+        check(effects.current(), "flash");
+        effects.stop();
     }
 
     /** breathe dims with PWM: on average 3/8 lit over a cycle, and fully dark at its start. */

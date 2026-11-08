@@ -115,6 +115,10 @@ public final class PortworldPanelPluginTest {
         write(node, "1\n\0");
         waitFor(host, "trigger presenceCleared");
 
+        // Actions while the LED is not ready are refused too.
+        plugin.execute("ledRed", Collections.<String, Object>emptyMap());
+        check(host.has("error The LED is not ready yet."), true);
+
         // A choice while the LED is not ready is refused and the state stays unknown.
         plugin.onEvent("select.led", Collections.<String, Object>singletonMap("option", "red"));
         check(host.has("error The LED is not ready yet."), true);

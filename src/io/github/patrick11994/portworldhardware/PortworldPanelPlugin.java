@@ -4,6 +4,7 @@ package io.github.patrick11994.portworldhardware;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,7 +28,7 @@ public final class PortworldPanelPlugin implements KioskPlugin {
         final int red, green, blue, blinks;
         final String presencePath;
         final boolean zeroMeansPresent, triggerDetected, triggerCleared;
-        final long pollMillis, clearDelayMillis;
+        final long pollMillis, clearDelayMillis, timedMillis;
 
         Config(Map<String, Object> settings) {
             red = pin(settings.get("redPin"), 71);
@@ -41,6 +42,7 @@ public final class PortworldPanelPlugin implements KioskPlugin {
             triggerCleared = Boolean.TRUE.equals(settings.get("triggerCleared"));
             pollMillis = Math.round(number(settings.get("pollSeconds"), 1, 0.5, 10) * 1000);
             clearDelayMillis = Math.round(number(settings.get("clearDelaySeconds"), 0, 0, 600) * 1000);
+            timedMillis = Math.round(number(settings.get("timedSeconds"), 30, 5, 600) * 1000);
         }
 
         boolean samePins(Config other) {
@@ -90,8 +92,33 @@ public final class PortworldPanelPlugin implements KioskPlugin {
     }
 
     @Override public void execute(String command, Map<String, Object> arguments) {
-        if (command.equals("ledOff")) choose(Colour.OFF.option);
-        else if (command.equals("doubleBlink")) choose("double blink");
+        LedEffects current = effects;
+        if (current == null) {
+            status("The LED is not ready yet.", true);
+            return;
+        }
+        // ledRed .. ledWhite: turn the LED on in that colour.
+        Colour colour = command.startsWith("led") ? Colour.named(command.substring(3).toLowerCase(Locale.ROOT)) : null;
+        if (colour != null && colour != Colour.OFF) {
+            current.select(colour.option);
+            return;
+        }
+        switch (command) {
+            case "ledOff": current.select(Colour.OFF.option); break;
+            case "ledToggle": current.toggle(); break;
+            case "ledNextColour": current.nextColour(); break;
+            case "ledNextEffect": current.nextEffect(); break;
+            case "doubleBlink": current.select("double blink"); break;
+            case "flashOnce": current.select("flash once"); break;
+            case "flashAndOff": current.select("flash and off"); break;
+            case "notifyOk": current.select("notify ok"); break;
+            case "notifyAttention": current.select("notify attention"); break;
+            case "notifyAlert": current.select("notify alert"); break;
+            case "alarmTimed": current.selectFor("alarm", config.timedMillis); break;
+            case "policeTimed": current.selectFor("police", config.timedMillis); break;
+            case "breatheTimed": current.selectFor("breathe", config.timedMillis); break;
+            default: log("Unknown action " + command);
+        }
     }
 
     @Override public void onEvent(String event, Map<String, Object> payload) {

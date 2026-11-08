@@ -61,6 +61,7 @@ Each channel of the light can only be on or off, so there are seven colours and 
 | flash once | Blinks a few times, then stays on the colour |
 | flash and off | Blinks a few times, then turns off |
 | double blink | Blinks twice, then goes back to what was showing before. Use it as a notification from an automation |
+| notify ok, notify attention, notify alert | Blink green, yellow or red three times, then go back to what was showing before |
 
 The effects that blink, pulse or fade use the last colour you picked, which is white until you pick one. Other effects choose their own colours.
 
@@ -68,7 +69,19 @@ The effects that blink, pulse or fade use the last colour you picked, which is w
 
 ## Actions and triggers
 
-- **Actions:** **LED off** and **LED double blink**. Use them in Gestures and the kiosk menu, or turn them into Home Assistant buttons on the plugin's page.
+- **Actions:** use them in Gestures and the kiosk menu, or turn them into Home Assistant buttons on the plugin's page.
+
+| Action | What it does |
+|---|---|
+| LED off | Turns the light off |
+| LED toggle | Off, or back on with the last colour or effect that was on |
+| LED next colour | The next of the seven colours |
+| LED red, LED green, LED blue, LED yellow, LED cyan, LED magenta, LED white | Turns the light on in that colour |
+| LED next effect | The next lasting effect, for example for a tap gesture |
+| LED double blink, LED flash once, LED flash and off | The effects of the same name |
+| LED notify OK, LED notify attention, LED notify alert | Three blinks in green, yellow or red, then back to what was showing |
+| LED alarm / police / breathe for a while | Runs the effect for the time set under **Timed effects run for**, then goes back to what was showing |
+
 - **Gesture triggers:** **Person detected** and **Nobody detected**. Choose what they run under **Gestures > Plugin trigger**. Each can be turned off in the settings.
 
 Turning the screen on when someone approaches is left to the panel's own presence service, which already does it.
@@ -78,6 +91,7 @@ Turning the screen on when someone approaches is left to the panel's own presenc
 | Setting | Default | What it does |
 |---|---|---|
 | Blinks for flash once | 5 | How often flash once and flash and off blink |
+| Timed effects run for | 30 s | How long the "for a while" actions run |
 | Person detected trigger | On | Fire the trigger when someone comes near |
 | Nobody detected trigger | Off | Fire the trigger when the sensor clears |
 | Clear after | 0 s | How long the sensor must read empty before Presence turns off. 0 follows the sensor directly |
